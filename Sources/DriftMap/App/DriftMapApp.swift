@@ -7,9 +7,9 @@ struct DriftMapApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 960, minHeight: 640)
+                .frame(width: 92, height: 48)
         }
-        .windowStyle(.titleBar)
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             SettingsView()

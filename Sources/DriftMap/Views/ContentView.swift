@@ -4,14 +4,17 @@ struct ContentView: View {
     @State private var viewModel = HeatmapPreviewViewModel()
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            HeatmapPreview(viewModel: viewModel)
-                .background(Color(nsColor: .windowBackgroundColor))
-
-            FloatingControls(viewModel: viewModel)
-                .padding(18)
-        }
-        .background(WindowConfigurator())
+        FloatingControls(viewModel: viewModel)
+            .padding(8)
+            .fixedSize()
+            .background(Color.clear)
+            .background(WindowConfigurator())
+            .onAppear {
+                viewModel.startOverlayMode()
+            }
+            .onDisappear {
+                viewModel.stopOverlayMode()
+            }
     }
 }
 
