@@ -118,7 +118,8 @@ struct HeatmapCanvas: View {
     }
 
     /// Traces the cursor's actual route by connecting consecutive mouse-move points in
-    /// the order they occurred, as a thin trail in the left-click color.
+    /// the order they occurred, as a thin neutral-gray trail that stays clear of the
+    /// colored click/drag cells.
     private func drawMovePath(_ samples: [CursorSample], in context: inout GraphicsContext) {
         let moves = samples.filter { $0.interactionType == .movement }
 
@@ -133,8 +134,7 @@ struct HeatmapCanvas: View {
             path.addLine(to: CGPoint(x: move.x, y: move.y))
         }
 
-        let color = ActionPalette.style(for: .leftClick).color(atLevel: 0.45).opacity(0.4)
-        context.stroke(path, with: .color(color), lineWidth: 1)
+        context.stroke(path, with: .color(Color(white: 0.6).opacity(0.35)), lineWidth: 1)
     }
 
     private func drawCursorPoints(_ samples: [CursorSample], in context: inout GraphicsContext) {
@@ -187,7 +187,7 @@ private enum ActionPalette {
 
             return Color(
                 hue: hue,
-                saturation: 0.45 + (0.50 * level),
+                saturation: 0.58 + (0.40 * level),
                 brightness: 0.98 - (0.30 * level),
                 opacity: 0.32 + (0.63 * level)
             )
@@ -207,13 +207,13 @@ private enum ActionPalette {
         case .middleClick:
             Style(hue: 0.11, saturationCount: 6)
 
-        // Drags — cooler hues: blue / cyan / violet.
+        // Drags — a cool blue→violet band kept well clear of the green clicks.
         case .leftDrag:
-            Style(hue: 0.60, saturationCount: 24)
+            Style(hue: 0.58, saturationCount: 24)
         case .rightDrag:
-            Style(hue: 0.50, saturationCount: 24)
+            Style(hue: 0.66, saturationCount: 24)
         case .middleDrag:
-            Style(hue: 0.74, saturationCount: 24)
+            Style(hue: 0.76, saturationCount: 24)
 
         // Scroll — magenta, clear of every other hue.
         case .scroll:
