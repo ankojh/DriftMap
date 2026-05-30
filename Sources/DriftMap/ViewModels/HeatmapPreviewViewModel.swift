@@ -2,6 +2,7 @@ import AppKit
 import DriftMapCore
 import Foundation
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -11,10 +12,12 @@ final class HeatmapPreviewViewModel {
 
     var maxSampleCount: Int = 10_000
     var isCapturing: Bool = false
+    var isOverlayActive: Bool = false
     var selectedRecordKey: String = HeatmapPreviewViewModel.globalRecordKey
     var selectedDisplayID: UInt32 = 0
     private(set) var samples: [CursorSample] = []
     private(set) var displays: [DisplayRecord] = []
+    @ObservationIgnored private let overlayCoordinator = OverlayWindowCoordinator()
     private var captureTimer: Timer?
     private var currentCanvasSize: CGSize = .zero
     private var lastRecordedPoint: CGPoint?
@@ -37,6 +40,13 @@ final class HeatmapPreviewViewModel {
 
     var visibleSampleCount: Int {
         visibleSamples.count
+    }
+
+    func overlaySamples(for displayID: UInt32) -> [CursorSample] {
+        samples.filter { sample in
+            let matchesApp = selectedRecordKey == Self.globalRecordKey || sample.appIdentifier == selectedRecordKey
+            return matchesApp && sample.displayID == displayID
+        }
     }
 
     var appRecords: [AppRecord] {
@@ -109,7 +119,8 @@ final class HeatmapPreviewViewModel {
     private func recordCurrentMouseLocation(in canvasSize: CGSize) {
         let mouseLocation = NSEvent.mouseLocation
         guard let geometry = CaptureGeometry(mouseLocation: mouseLocation),
-              let mappedPoint = geometry.map(mouseLocation: mouseLocation, canvasSize: canvasSize)
+              let mappedPoint = geometry.map(mouseLocation: mouseLocation, canvasSize: canvasSize),
+              let normalizedPoint = geometry.normalizedPoint(mouseLocation: mouseLocation)
         else {
             lastRecordedPoint = nil
             return
@@ -120,10 +131,10 @@ final class HeatmapPreviewViewModel {
         }
 
         lastRecordedPoint = mappedPoint
-        record(point: mappedPoint, in: canvasSize, display: geometry.display)
+        record(point: mappedPoint, normalizedPoint: normalizedPoint, in: canvasSize, display: geometry.display)
     }
 
-    private func record(point: CGPoint, in canvasSize: CGSize, display: DisplayRecord) {
+    private func record(point: CGPoint, normalizedPoint: CGPoint, in canvasSize: CGSize, display: DisplayRecord) {
         guard canvasSize.width > 0, canvasSize.height > 0 else {
             return
         }
@@ -145,7 +156,9 @@ final class HeatmapPreviewViewModel {
                 appIdentifier: frontmostApp?.bundleIdentifier ?? "unknown",
                 appName: frontmostApp?.localizedName ?? "Unknown App",
                 displayID: display.id,
-                displayName: display.name
+                displayName: display.name,
+                normalizedX: normalizedPoint.x,
+                normalizedY: normalizedPoint.y
             )
         )
 
@@ -157,6 +170,25 @@ final class HeatmapPreviewViewModel {
     func clearSamples() {
         samples.removeAll(keepingCapacity: true)
         selectedRecordKey = Self.globalRecordKey
+    }
+
+    func toggleOverlay() {
+        if isOverlayActive {
+            hideOverlay()
+        } else {
+            showOverlay()
+        }
+    }
+
+    func showOverlay() {
+        refreshDisplays()
+        overlayCoordinator.show(displays: displays, viewModel: self)
+        isOverlayActive = overlayCoordinator.isActive
+    }
+
+    func hideOverlay() {
+        overlayCoordinator.hide()
+        isOverlayActive = false
     }
 
     func refreshDisplays() {
@@ -231,7 +263,19 @@ private struct CaptureGeometry {
     func map(mouseLocation: CGPoint, canvasSize: CGSize) -> CGPoint? {
         guard canvasSize.width > 0,
               canvasSize.height > 0,
-              display.frame.contains(mouseLocation)
+              let normalizedPoint = normalizedPoint(mouseLocation: mouseLocation)
+        else {
+            return nil
+        }
+
+        return CGPoint(
+            x: normalizedPoint.x * canvasSize.width,
+            y: normalizedPoint.y * canvasSize.height
+        )
+    }
+
+    func normalizedPoint(mouseLocation: CGPoint) -> CGPoint? {
+        guard display.frame.contains(mouseLocation)
         else {
             return nil
         }
@@ -239,9 +283,6 @@ private struct CaptureGeometry {
         let xRatio = (mouseLocation.x - display.frame.minX) / display.frame.width
         let yRatio = (display.frame.maxY - mouseLocation.y) / display.frame.height
 
-        return CGPoint(
-            x: xRatio * canvasSize.width,
-            y: yRatio * canvasSize.height
-        )
+        return CGPoint(x: xRatio, y: yRatio)
     }
 }

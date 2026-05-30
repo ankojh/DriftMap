@@ -48,6 +48,13 @@ struct FloatingControls: View {
                         }
                         .help("Clear samples")
 
+                        Button {
+                            viewModel.toggleOverlay()
+                        } label: {
+                            Image(systemName: viewModel.isOverlayActive ? "rectangle.slash" : "rectangle.on.rectangle")
+                        }
+                        .help(viewModel.isOverlayActive ? "Hide overlay" : "Show overlay on all monitors")
+
                         Spacer(minLength: 0)
                     }
                 }

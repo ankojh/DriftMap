@@ -7,19 +7,7 @@ struct HeatmapPreview: View {
     var body: some View {
         GeometryReader { proxy in
             let size = proxy.size
-            let configuration = HeatmapConfiguration(
-                canvasWidth: max(size.width, 1),
-                canvasHeight: max(size.height, 1),
-                cellSize: HeatmapPreviewViewModel.standardCellSize
-            )
-            let samples = viewModel.visibleSamples
-            let cells = HeatmapAccumulator(configuration: configuration).cells(from: samples)
-
-            Canvas { context, _ in
-                drawGrid(in: &context, size: size, cellSize: HeatmapPreviewViewModel.standardCellSize)
-                drawHeatmap(cells, in: &context, cellSize: HeatmapPreviewViewModel.standardCellSize)
-                drawCursorPoints(samples, in: &context)
-            }
+            HeatmapCanvas(samples: viewModel.visibleSamples, showsGrid: true, showsCursorPoints: true)
             .onAppear {
                 viewModel.startGlobalCapture(canvasSize: size)
             }
@@ -28,6 +16,55 @@ struct HeatmapPreview: View {
             }
             .onDisappear {
                 viewModel.stopGlobalCapture()
+            }
+        }
+    }
+}
+
+struct HeatmapCanvas: View {
+    let samples: [CursorSample]
+    let showsGrid: Bool
+    let showsCursorPoints: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let configuration = HeatmapConfiguration(
+                canvasWidth: max(size.width, 1),
+                canvasHeight: max(size.height, 1),
+                cellSize: HeatmapPreviewViewModel.standardCellSize
+            )
+            let renderSamples = samples.map { sample in
+                guard let normalizedX = sample.normalizedX,
+                      let normalizedY = sample.normalizedY
+                else {
+                    return sample
+                }
+
+                return CursorSample(
+                    x: normalizedX * size.width,
+                    y: normalizedY * size.height,
+                    timestamp: sample.timestamp,
+                    appIdentifier: sample.appIdentifier,
+                    appName: sample.appName,
+                    displayID: sample.displayID,
+                    displayName: sample.displayName,
+                    normalizedX: normalizedX,
+                    normalizedY: normalizedY
+                )
+            }
+            let cells = HeatmapAccumulator(configuration: configuration).cells(from: renderSamples)
+
+            Canvas { context, _ in
+                if showsGrid {
+                    drawGrid(in: &context, size: size, cellSize: HeatmapPreviewViewModel.standardCellSize)
+                }
+
+                drawHeatmap(cells, in: &context, cellSize: HeatmapPreviewViewModel.standardCellSize)
+
+                if showsCursorPoints {
+                    drawCursorPoints(renderSamples, in: &context)
+                }
             }
         }
     }

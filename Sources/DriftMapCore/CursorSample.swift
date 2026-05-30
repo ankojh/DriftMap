@@ -8,6 +8,8 @@ public struct CursorSample: Equatable, Sendable {
     public let appName: String?
     public let displayID: UInt32?
     public let displayName: String?
+    public let normalizedX: Double?
+    public let normalizedY: Double?
 
     public init(
         x: Double,
@@ -16,7 +18,9 @@ public struct CursorSample: Equatable, Sendable {
         appIdentifier: String? = nil,
         appName: String? = nil,
         displayID: UInt32? = nil,
-        displayName: String? = nil
+        displayName: String? = nil,
+        normalizedX: Double? = nil,
+        normalizedY: Double? = nil
     ) {
         self.x = x
         self.y = y
@@ -25,5 +29,7 @@ public struct CursorSample: Equatable, Sendable {
         self.appName = appName
         self.displayID = displayID
         self.displayName = displayName
+        self.normalizedX = normalizedX
+        self.normalizedY = normalizedY
     }
 }
